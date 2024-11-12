@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Face Detection</title>
+</head>
+<body>
+  <h2>Face Recognition Model</h2>
+  <video id="video" autoplay style="display: none; width: 600px; height: 600px;"></video>
+  <canvas id="canvas" width="600" height="600"></canvas>
+
+  <!-- Load TensorFlow.js and models via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core@3.20.0/dist/tf-core.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl@3.20.0/dist/tf-backend-webgl.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgpu@3.20.0/dist/tf-backend-webgpu.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-wasm@3.20.0/dist/tf-backend-wasm.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter@3.20.0/dist/tf-converter.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/face-detection@0.0.3/dist/face-detection.min.js"></script>
+
+  <!-- Your script -->
+  <script>
+    // Set the backend to 'webgl'
+    tf.setBackend('webgl').then(async () => {
+      const video = document.getElementById('video');
+      const canvas = document.getElementById('canvas');
+      const ctx = canvas.getContext('2d');
+      let detector;
+
+      const Detector = async () => {
+        if (!detector) return;
+
+        const faces = await detector.estimateFaces(video, { flipHorizontal: false });
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        if (!faces || faces.length === 0) {
+          console.log('No faces detected.');
+          return;
+        }
+
+        faces.forEach(face => {
+          const { box, keypoints } = face;
+          // If box is not available, calculate it from keypoints
+          let xMin = Infinity;
+          let yMin = Infinity;
+          let xMax = -Infinity;
+          let yMax = -Infinity;
+
+          keypoints.forEach(point => {
+            xMin = Math.min(xMin, point.x);
+            yMin = Math.min(yMin, point.y);
+            xMax = Math.max(xMax, point.x);
+            yMax = Math.max(yMax, point.y);
+          });
+
+          const width = xMax - xMin;
+          const height = yMax - yMin;
+
+          // Draw rectangle around the face
+          ctx.beginPath();
+          ctx.rect(xMin, yMin, width, height);
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = 'red';
+          ctx.stroke();
+
+          // Draw keypoints
+          keypoints.forEach(point => {
+            ctx.beginPath();
+            ctx.arc(point.x, point.y, 5, 0, 2 * Math.PI);
+            ctx.fillStyle = 'blue';
+            ctx.fill();
+          });
+        });
+      };
+
+      const setupCamera = () => {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error('Browser API navigator.mediaDevices.getUserMedia not available');
+        }
+
+        navigator.mediaDevices.getUserMedia({
+          video: { width: 600, height: 600 },
+          audio: false,
+        }).then(stream => {
+          video.srcObject = stream;
+          console.log('Camera stream set up successfully.');
+        }).catch(error => {
+          console.error('Error accessing the camera:', error);
+        });
+      };
+
+      setupCamera();
+
+      video.addEventListener('loadeddata', async () => {
+        console.log('Video is ready, starting detection loop.');
+        const model = faceDetection.SupportedModels.MediaPipeFaceDetector;
+        const detectorConfig = { runtime: 'tfjs', maxFaces: 1 };
+        detector = await faceDetection.createDetector(model, detectorConfig);
+        console.log('Face detector initialized:', detector);
+
+        setInterval(Detector, 100); // Run detection at intervals
+      });
+    });
+  </script>
+</body>
+</html>

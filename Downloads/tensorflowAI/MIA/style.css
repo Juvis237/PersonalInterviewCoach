@@ -1,0 +1,22 @@
+#message {
+    font-size: 24px;
+    color: red;
+    text-align: center;
+    margin-top: 20px;
+  }
+  #video {
+    display: block;
+  
+  }
+  canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+  
+  }
+  body {
+    position: relative;
+    width: 720px;
+    margin: 0 auto;
+    
+  }
